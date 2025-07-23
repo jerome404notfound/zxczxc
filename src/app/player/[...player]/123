@@ -1,0 +1,581 @@
+// // // /app/player/[...player]/page.tsx
+
+// // "use client";
+// // import { useEffect, useRef, useState } from "react";
+// // import Hls from "hls.js";
+// // import { useParams } from "next/navigation";
+
+// // export default function PlayerPage() {
+// //   const videoRef = useRef<HTMLVideoElement | null>(null);
+// //   const [error, setError] = useState("");
+// //   const params = useParams();
+
+// //   useEffect(() => {
+// //     const fetchStream = async () => {
+// //       try {
+// //         const media_type = params?.player?.[0];
+// //         const id = params?.player?.[1];
+// //         const season = params?.player?.[2];
+// //         const episode = params?.player?.[3];
+
+// //         const response = await fetch(
+// //           `/api/${[media_type, id, season, episode].filter(Boolean).join("/")}`
+// //         );
+// //         const data = await response.json();
+
+// //         if (data.m3u8 && videoRef.current) {
+// //           if (Hls.isSupported()) {
+// //             const hls = new Hls();
+// //             hls.loadSource(data.m3u8);
+// //             hls.attachMedia(videoRef.current);
+// //           } else if (
+// //             videoRef.current.canPlayType("application/vnd.apple.mpegurl")
+// //           ) {
+// //             videoRef.current.src = data.m3u8;
+// //           }
+// //         } else {
+// //           setError("No video found.");
+// //         }
+// //       } catch (err) {
+// //         console.error("Error loading stream:", err);
+// //         setError("Failed to load video.");
+// //       }
+// //     };
+
+// //     fetchStream();
+// //   }, [params]);
+
+// //   return (
+// //     <div className="flex justify-center items-center h-screen bg-black">
+// //       {error ? (
+// //         <p className="text-white">{error}</p>
+// //       ) : (
+// //         <video
+// //           ref={videoRef}
+// //           controls
+// //           autoPlay
+// //           className="w-full max-w-4xl h-auto rounded-md shadow-lg"
+// //         />
+// //       )}
+// //     </div>
+// //   );
+// // }
+// // "use client";
+// // import { useEffect, useRef, useState } from "react";
+// // import Hls from "hls.js";
+// // import { useParams } from "next/navigation";
+
+// // export default function PlayerPage() {
+// //   const videoRef = useRef<HTMLVideoElement | null>(null);
+// //   const [error, setError] = useState("");
+// //   const params = useParams();
+
+// //   useEffect(() => {
+// //     const fetchStream = async () => {
+// //       const media_type = params?.player?.[0];
+// //       const id = params?.player?.[1];
+// //       const season = params?.player?.[2];
+// //       const episode = params?.player?.[3];
+
+// //       if (!media_type || !id) {
+// //         setError("Missing video parameters.");
+// //         return;
+// //       }
+
+// //       const m3u8Url = `/api/${[media_type, id, season, episode]
+// //         .filter(Boolean)
+// //         .join("/")}/playlist.m3u8`;
+
+// //       if (videoRef.current) {
+// //         if (Hls.isSupported()) {
+// //           const hls = new Hls();
+// //           hls.loadSource(m3u8Url);
+// //           hls.attachMedia(videoRef.current);
+// //           hls.on(Hls.Events.ERROR, (event, data) => {
+// //             console.error("HLS error", data);
+// //             setError("Playback error");
+// //           });
+// //         } else if (
+// //           videoRef.current.canPlayType("application/vnd.apple.mpegurl")
+// //         ) {
+// //           videoRef.current.src = m3u8Url;
+// //         } else {
+// //           setError("HLS not supported");
+// //         }
+// //       }
+// //     };
+
+// //     fetchStream();
+// //   }, [params]);
+
+// //   return (
+// //     <div className="flex justify-center items-center h-screen bg-black">
+// //       {error ? (
+// //         <p className="text-white">{error}</p>
+// //       ) : (
+// //         <video
+// //           ref={videoRef}
+// //           controls
+// //           autoPlay
+// //           className="w-full max-w-4xl h-auto rounded-md shadow-lg"
+// //         />
+// //       )}
+// //     </div>
+// //   );
+// // }
+
+// ////////////////////////////////
+
+// "use client";
+// import { useEffect, useRef, useState } from "react";
+// import Hls from "hls.js";
+// import { useParams } from "next/navigation";
+// import {
+//   Play,
+//   Pause,
+//   Volume2,
+//   VolumeX,
+//   Maximize,
+//   Settings,
+//   Minimize,
+//   UndoDot,
+//   RedoDot,
+// } from "lucide-react";
+// import { Slider } from "@/components/ui/slider";
+
+// export default function PlayerPage() {
+//   const videoRef = useRef<HTMLVideoElement | null>(null);
+//   const containerRef = useRef<HTMLDivElement | null>(null);
+//   const [error, setError] = useState("");
+//   const [hlsInstance, setHlsInstance] = useState<Hls | null>(null);
+//   const [levels, setLevels] = useState<any[]>([]);
+//   const [subtitles, setSubtitles] = useState<any[]>([]);
+//   const [audioTracks, setAudioTracks] = useState<any[]>([]);
+//   const [selectedLevel, setSelectedLevel] = useState<number>(-1);
+//   const [selectedSubtitle, setSelectedSubtitle] = useState<number>(-1);
+//   const [selectedAudio, setSelectedAudio] = useState<number>(0);
+
+//   // Video control states
+//   const [isPlaying, setIsPlaying] = useState(false);
+//   const [currentTime, setCurrentTime] = useState(0);
+//   const [duration, setDuration] = useState(0);
+//   const [volume, setVolume] = useState(1);
+//   const [isMuted, setIsMuted] = useState(false);
+//   const [isFullscreen, setIsFullscreen] = useState(false);
+//   const [showControls, setShowControls] = useState(true);
+//   const [showSettings, setShowSettings] = useState(false);
+//   const [isBuffering, setIsBuffering] = useState(false);
+
+//   const params = useParams();
+//   let controlsTimeout: NodeJS.Timeout;
+
+//   useEffect(() => {
+//     const fetchStream = async () => {
+//       try {
+//         const media_type = params?.player?.[0];
+//         const id = params?.player?.[1];
+//         const season = params?.player?.[2];
+//         const episode = params?.player?.[3];
+
+//         const m3u8Url = `/api/${[media_type, id, season, episode]
+//           .filter(Boolean)
+//           .join("/")}/playlist.m3u8`;
+
+//         if (m3u8Url && videoRef.current) {
+//           if (Hls.isSupported()) {
+//             const hls = new Hls();
+//             hls.loadSource(m3u8Url);
+//             hls.attachMedia(videoRef.current);
+
+//             hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
+//               setLevels(data.levels);
+//             });
+
+//             hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, (_, data) => {
+//               setSubtitles(data.subtitleTracks);
+//             });
+
+//             hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, (_, data) => {
+//               setAudioTracks(data.audioTracks);
+//             });
+
+//             setHlsInstance(hls);
+//           } else if (
+//             videoRef.current.canPlayType("application/vnd.apple.mpegurl")
+//           ) {
+//             videoRef.current.src = m3u8Url;
+//           }
+//         } else {
+//           setError("No video found.");
+//         }
+//       } catch (err) {
+//         console.error("Error loading stream:", err);
+//         setError("Failed to load video.");
+//       }
+//     };
+
+//     fetchStream();
+//   }, [params]);
+
+//   // Apply HLS changes
+//   useEffect(() => {
+//     if (hlsInstance) hlsInstance.currentLevel = selectedLevel;
+//   }, [selectedLevel, hlsInstance]);
+
+//   useEffect(() => {
+//     if (hlsInstance) hlsInstance.subtitleTrack = selectedSubtitle;
+//   }, [selectedSubtitle, hlsInstance]);
+
+//   useEffect(() => {
+//     if (hlsInstance) hlsInstance.audioTrack = selectedAudio;
+//   }, [selectedAudio, hlsInstance]);
+
+//   // Video event listeners
+//   useEffect(() => {
+//     const video = videoRef.current;
+//     if (!video) return;
+
+//     const handleLoadedMetadata = () => {
+//       setDuration(video.duration);
+//     };
+
+//     const handleTimeUpdate = () => {
+//       setCurrentTime(video.currentTime);
+//     };
+
+//     const handlePlay = () => {
+//       setIsPlaying(true);
+//       setIsBuffering(false);
+//     };
+
+//     const handlePause = () => {
+//       setIsPlaying(false);
+//     };
+
+//     const handleWaiting = () => {
+//       setIsBuffering(true);
+//     };
+
+//     const handleCanPlay = () => {
+//       setIsBuffering(false);
+//     };
+
+//     video.addEventListener("loadedmetadata", handleLoadedMetadata);
+//     video.addEventListener("timeupdate", handleTimeUpdate);
+//     video.addEventListener("play", handlePlay);
+//     video.addEventListener("pause", handlePause);
+//     video.addEventListener("waiting", handleWaiting);
+//     video.addEventListener("canplay", handleCanPlay);
+
+//     return () => {
+//       video.removeEventListener("loadedmetadata", handleLoadedMetadata);
+//       video.removeEventListener("timeupdate", handleTimeUpdate);
+//       video.removeEventListener("play", handlePlay);
+//       video.removeEventListener("pause", handlePause);
+//       video.removeEventListener("waiting", handleWaiting);
+//       video.removeEventListener("canplay", handleCanPlay);
+//     };
+//   }, []);
+
+//   // Auto-hide controls
+//   useEffect(() => {
+//     const handleMouseMove = () => {
+//       setShowControls(true);
+//       clearTimeout(controlsTimeout);
+//       controlsTimeout = setTimeout(() => {
+//         if (isPlaying) setShowControls(false);
+//       }, 3000);
+//     };
+
+//     const container = containerRef.current;
+//     if (container) {
+//       container.addEventListener("mousemove", handleMouseMove);
+//       return () => {
+//         container.removeEventListener("mousemove", handleMouseMove);
+//         clearTimeout(controlsTimeout);
+//       };
+//     }
+//   }, [isPlaying]);
+
+//   const togglePlay = () => {
+//     if (videoRef.current) {
+//       if (isPlaying) {
+//         videoRef.current.pause();
+//       } else {
+//         videoRef.current.play();
+//       }
+//     }
+//   };
+
+//   const handleSeek = (value: number[]) => {
+//     if (videoRef.current) {
+//       const newTime = (value[0] / 100) * duration;
+//       videoRef.current.currentTime = newTime;
+//       setCurrentTime(newTime);
+//     }
+//   };
+
+//   const handleVolumeChange = (value: number[]) => {
+//     const newVolume = value[0] / 100;
+//     setVolume(newVolume);
+//     if (videoRef.current) {
+//       videoRef.current.volume = newVolume;
+//     }
+//     setIsMuted(newVolume === 0);
+//   };
+
+//   const toggleMute = () => {
+//     if (videoRef.current) {
+//       const newMuted = !isMuted;
+//       videoRef.current.muted = newMuted;
+//       setIsMuted(newMuted);
+//     }
+//   };
+
+//   const toggleFullscreen = () => {
+//     if (!document.fullscreenElement) {
+//       containerRef.current?.requestFullscreen();
+//       setIsFullscreen(true);
+//     } else {
+//       document.exitFullscreen();
+//       setIsFullscreen(false);
+//     }
+//   };
+
+//   const skip = (seconds: number) => {
+//     if (videoRef.current) {
+//       videoRef.current.currentTime = Math.max(
+//         0,
+//         Math.min(duration, currentTime + seconds)
+//       );
+//     }
+//   };
+
+//   const formatTime = (time: number) => {
+//     const minutes = Math.floor(time / 60);
+//     const seconds = Math.floor(time % 60);
+//     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+//   };
+
+//   const progressPercentage = duration ? (currentTime / duration) * 100 : 0;
+
+//   // Handle container click (but not when clicking on controls)
+//   const handleContainerClick = (e: React.MouseEvent) => {
+//     // Only toggle play if clicking on the video itself or empty space
+//     if (e.target === e.currentTarget || e.target === videoRef.current) {
+//       togglePlay();
+//     }
+//   };
+
+//   if (error) {
+//     return (
+//       <div className="flex items-center justify-center  h-[100dvh] bg-black text-white">
+//         <p className="text-xl">{error}</p>
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <div
+//       ref={containerRef}
+//       className="relative w-full h-[100dvh] bg-black overflow-hidden group"
+//       onClick={handleContainerClick}
+//     >
+//       {/* Video Element */}
+//       <video ref={videoRef} className="w-full h-full object-contain" autoPlay />
+
+//       {/* Buffering Indicator */}
+//       {isBuffering && (
+//         <div className="absolute inset-0 flex items-center justify-center bg-black/30 bg-opacity-50 z-30 pointer-events-none">
+//           <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+//         </div>
+//       )}
+
+//       {/* Main Controls Overlay */}
+//       {showControls && (
+//         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/50 z-10 pointer-events-none">
+//           {/* Top Bar */}
+//           <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center pointer-events-auto">
+//             <div className="text-white text-xl font-semibold">ZXC[STREAM]</div>
+//             <button
+//               onClick={(e) => {
+//                 e.stopPropagation();
+//                 setShowSettings(!showSettings);
+//               }}
+//               className="p-2 rounded-full hover:bg-white/20 transition-colors"
+//             >
+//               <Settings className="lg:w-8 lg:h-8 w-6 h-6 text-white" />
+//             </button>
+//           </div>
+
+//           {/* Bottom Controls */}
+//           <div className="absolute bottom-0 left-0 right-0 p-6 space-y-4 pointer-events-auto">
+//             {/* Progress Bar */}
+//             <div className="flex items-center space-x-6">
+//               <span className="text-white text-center  font-mono text-sm min-w-[3rem]">
+//                 {formatTime(currentTime)}
+//               </span>
+//               <div className="flex-1">
+//                 <Slider
+//                   value={[progressPercentage]}
+//                   onValueChange={handleSeek}
+//                   max={100}
+//                   step={0.1}
+//                   className="w-full"
+//                 />
+//               </div>
+//               <span className="text-white text-center font-mono text-sm min-w-[3rem]">
+//                 {formatTime(duration)}
+//               </span>
+//             </div>
+
+//             {/* Control Buttons */}
+//             <div className="flex items-center justify-between">
+//               <div className="flex items-center lg:space-x-4 space-x-2">
+//                 <button
+//                   onClick={(e) => {
+//                     e.stopPropagation();
+//                     skip(-10);
+//                   }}
+//                   className="lg:p-3 p-1 rounded-full hover:bg-white/20 transition-colors"
+//                 >
+//                   <UndoDot className="lg:w-8 lg:h-8 w-6 h-6 text-white" />
+//                 </button>
+
+//                 <button
+//                   onClick={(e) => {
+//                     e.stopPropagation();
+//                     togglePlay();
+//                   }}
+//                   className="w-10 flex justify-center rounded-full hover:bg-white/20 transition-colors"
+//                 >
+//                   {isPlaying ? (
+//                     <Pause className="lg:w-8 lg:h-8 w-7 h-7 text-white" />
+//                   ) : (
+//                     <Play className="lg:w-8 lg:h-8 w-7 h-7 text-white ml-1" />
+//                   )}
+//                 </button>
+
+//                 <button
+//                   onClick={(e) => {
+//                     e.stopPropagation();
+//                     skip(10);
+//                   }}
+//                   className="lg:p-3 p-1 rounded-full hover:bg-white/20 transition-colors"
+//                 >
+//                   <RedoDot className="lg:w-8 lg:h-8 w-6 h-6 text-white" />
+//                 </button>
+
+//                 {/* Volume Control */}
+//                 <div className="flex items-center space-x-2">
+//                   <button
+//                     onClick={(e) => {
+//                       e.stopPropagation();
+//                       toggleMute();
+//                     }}
+//                     className="p-2 rounded-full hover:bg-white/20 transition-colors"
+//                   >
+//                     {isMuted || volume === 0 ? (
+//                       <VolumeX className="lg:w-8 lg:h-8 w-6 h-6 text-white" />
+//                     ) : (
+//                       <Volume2 className="lg:w-8 lg:h-8 w-6 h-6 text-white" />
+//                     )}
+//                   </button>
+//                   <div className="w-24">
+//                     <Slider
+//                       value={[isMuted ? 0 : volume * 100]}
+//                       onValueChange={handleVolumeChange}
+//                       max={100}
+//                       step={1}
+//                     />
+//                   </div>
+//                 </div>
+//               </div>
+
+//               <button
+//                 onClick={(e) => {
+//                   e.stopPropagation();
+//                   toggleFullscreen();
+//                 }}
+//                 className="p-2 rounded-full hover:bg-white/20 transition-colors"
+//               >
+//                 {isFullscreen ? (
+//                   <Minimize className="lg:w-8 lg:h-8 w-6 h-6 text-white" />
+//                 ) : (
+//                   <Maximize className="lg:w-8 lg:h-8 w-6 h-6 text-white" />
+//                 )}
+//               </button>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+
+//       {/* Settings Panel */}
+//       {showSettings && (
+//         <div className="absolute top-16 right-6 bg-black/90 backdrop-blur-sm rounded-lg p-4 w-80 space-y-4 z-40">
+//           {/* Quality Settings */}
+//           {levels.length > 0 && (
+//             <div>
+//               <label className="block text-white font-semibold mb-2">
+//                 Quality
+//               </label>
+//               <select
+//                 className="w-full bg-gray-800 text-white p-2 rounded border border-gray-600 focus:border-blue-500 focus:outline-none"
+//                 value={selectedLevel}
+//                 onChange={(e) => setSelectedLevel(Number(e.target.value))}
+//               >
+//                 <option value={-1}>Auto</option>
+//                 {levels.map((level, i) => (
+//                   <option key={i} value={i}>
+//                     {level.height}p – {(level.bitrate / 1000).toFixed(0)} kbps
+//                   </option>
+//                 ))}
+//               </select>
+//             </div>
+//           )}
+
+//           {/* Subtitles Settings */}
+//           {subtitles.length > 0 && (
+//             <div>
+//               <label className="block text-white font-semibold mb-2">
+//                 Subtitles
+//               </label>
+//               <select
+//                 className="w-full bg-gray-800 text-white p-2 rounded border border-gray-600 focus:border-blue-500 focus:outline-none"
+//                 value={selectedSubtitle}
+//                 onChange={(e) => setSelectedSubtitle(Number(e.target.value))}
+//               >
+//                 <option value={-1}>Off</option>
+//                 {subtitles.map((sub, i) => (
+//                   <option key={i} value={i}>
+//                     {sub.name} ({sub.lang})
+//                   </option>
+//                 ))}
+//               </select>
+//             </div>
+//           )}
+
+//           {/* Audio Track Settings */}
+//           {audioTracks.length > 1 && (
+//             <div>
+//               <label className="block text-white font-semibold mb-2">
+//                 Audio Track
+//               </label>
+//               <select
+//                 className="w-full bg-gray-800 text-white p-2 rounded border border-gray-600 focus:border-blue-500 focus:outline-none"
+//                 value={selectedAudio}
+//                 onChange={(e) => setSelectedAudio(Number(e.target.value))}
+//               >
+//                 {audioTracks.map((track, i) => (
+//                   <option key={i} value={i}>
+//                     {track.name || track.lang || `Track ${i + 1}`}
+//                   </option>
+//                 ))}
+//               </select>
+//             </div>
+//           )}
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
