@@ -172,17 +172,120 @@
 //     },
 //   });
 // }
-import { NextRequest } from "next/server";
-import axios, { AxiosError } from "axios";
+// import { NextRequest } from "next/server";
+// import axios, { AxiosError } from "axios";
+
+// export const runtime = "nodejs";
+
+// export async function GET(
+//   req: NextRequest,
+//   { params }: { params: { stream: string[] } }
+// ) {
+//   const streamSegments = params.stream;
+
+//   const encoded = streamSegments?.[0];
+//   const trailing = streamSegments?.slice(1).join("/"); // Rest of the path
+
+//   if (!encoded) {
+//     return new Response("Bad Request: No encoded path", { status: 400 });
+//   }
+
+//   let decodedPath = "";
+//   try {
+//     decodedPath = atob(encoded); // Decode Base64
+//   } catch {
+//     return new Response("Bad Request: Invalid base64", { status: 400 });
+//   }
+
+//   const fullPath = trailing ? `${decodedPath}/${trailing}` : decodedPath;
+//   const targetUrl = `https://scrennnifu.click/${fullPath}`;
+
+//   if (!targetUrl.includes(".m3u8") && !targetUrl.includes(".ts")) {
+//     return new Response("Forbidden: Only HLS resources allowed", {
+//       status: 403,
+//     });
+//   }
+
+//   const origin = req.headers.get("origin") || "";
+//   const referer = req.headers.get("referer") || "";
+
+//   const allowedOrigins = [
+//     "https://zxcstream-api-production.up.railway.app",
+//     "http://localhost:3000",
+//     "http://localhost:3001",
+//   ];
+
+//   const isValidOrigin = allowedOrigins.includes(origin);
+//   const isValidReferer = allowedOrigins.some((url) => referer.startsWith(url));
+
+//   if (!isValidOrigin && !isValidReferer) {
+//     console.warn("❌ Blocked request | Origin:", origin, "| Referer:", referer);
+//     return new Response("Forbidden: Invalid Origin/Referer", { status: 403 });
+//   }
+
+//   try {
+//     const response = await axios.get(targetUrl, {
+//       responseType: "text",
+//       headers: {
+//         "User-Agent": req.headers.get("user-agent") || "",
+//       },
+//       timeout: 10000,
+//     });
+
+//     // Only rewrite if it's a .m3u8 playlist
+//     const contentType = response.headers["content-type"];
+//     const isM3U8 = contentType?.includes("application/vnd.apple.mpegurl");
+
+//     const base =
+//       new URL(targetUrl).origin +
+//       "/" +
+//       fullPath.substring(0, fullPath.lastIndexOf("/"));
+
+//     const rewritten = isM3U8
+//       ? response.data.replace(
+//           /^(?!#)(.*\.(ts|m4s|vtt))$/gm,
+//           (match: string) => `${base}/${match}`
+//         )
+//       : response.data;
+
+//     return new Response(rewritten, {
+//       status: response.status,
+//       headers: {
+//         "Content-Type": contentType || "text/plain",
+//         "Access-Control-Allow-Origin": "*",
+//         "Cache-Control": "public, max-age=30",
+//       },
+//     });
+//   } catch (err: unknown) {
+//     const error = err as AxiosError;
+//     console.error("❌ Proxy error:", error.message);
+
+//     return new Response("Proxy fetch failed", { status: 500 });
+//   }
+// }
+
+// export async function OPTIONS() {
+//   return new Response(null, {
+//     status: 200,
+//     headers: {
+//       "Access-Control-Allow-Origin": "*",
+//       "Access-Control-Allow-Methods": "GET, OPTIONS",
+//       "Access-Control-Allow-Headers": "User-Agent",
+//     },
+//   });
+// }
+import type { NextRequest } from "next/server";
+import axios, { type AxiosError } from "axios";
 
 export const runtime = "nodejs";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { stream: string[] } }
+  { params }: { params: Promise<{ stream: string[] }> }
 ) {
-  const streamSegments = params.stream;
-
+  // Await the params since it's now a Promise in Next.js 15
+  const resolvedParams = await params;
+  const streamSegments = resolvedParams.stream;
   const encoded = streamSegments?.[0];
   const trailing = streamSegments?.slice(1).join("/"); // Rest of the path
 
@@ -208,7 +311,6 @@ export async function GET(
 
   const origin = req.headers.get("origin") || "";
   const referer = req.headers.get("referer") || "";
-
   const allowedOrigins = [
     "https://zxcstream-api-production.up.railway.app",
     "http://localhost:3000",
@@ -235,7 +337,6 @@ export async function GET(
     // Only rewrite if it's a .m3u8 playlist
     const contentType = response.headers["content-type"];
     const isM3U8 = contentType?.includes("application/vnd.apple.mpegurl");
-
     const base =
       new URL(targetUrl).origin +
       "/" +
@@ -259,7 +360,6 @@ export async function GET(
   } catch (err: unknown) {
     const error = err as AxiosError;
     console.error("❌ Proxy error:", error.message);
-
     return new Response("Proxy fetch failed", { status: 500 });
   }
 }
