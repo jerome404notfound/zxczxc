@@ -20,27 +20,26 @@ export default function PlayerPage() {
   const [isAllowed, setIsAllowed] = useState(false);
 
   const apiKey = "47a1a7df542d3d483227f758a7317dff";
-  const allowedDomain = "http://localhost:3001";
+  const allowedDomain = "https://www.zxcstream.pro/";
 
-useEffect(() => {
-  try {
-    const isFramed = window.top !== window.self;
-    const referrer = document.referrer;
+  useEffect(() => {
+    try {
+      const isFramed = window.top !== window.self;
+      const referrer = document.referrer;
 
-    // Strictly require matching domain in all cases
-    if (
-      (isFramed && referrer.startsWith(allowedDomain)) ||
-      (!isFramed && window.location.origin === allowedDomain)
-    ) {
-      setIsAllowed(true);
-    } else {
+      // Strictly require matching domain in all cases
+      if (
+        (isFramed && referrer.startsWith(allowedDomain)) ||
+        (!isFramed && window.location.origin === allowedDomain)
+      ) {
+        setIsAllowed(true);
+      } else {
+        setIsAllowed(false);
+      }
+    } catch (e) {
       setIsAllowed(false);
     }
-  } catch (e) {
-    setIsAllowed(false);
-  }
-}, []);
-
+  }, []);
 
   useEffect(() => {
     const fetchStream = async () => {
@@ -98,9 +97,7 @@ useEffect(() => {
 
   if (!isAllowed) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-black text-white">
-      
-      </div>
+      <div className="h-screen w-full flex items-center justify-center bg-black text-white"></div>
     );
   }
 

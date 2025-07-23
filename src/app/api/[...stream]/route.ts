@@ -312,7 +312,7 @@ export async function GET(
   const origin = req.headers.get("origin") || "";
   const referer = req.headers.get("referer") || "";
   const allowedOrigins = [
-    "https://zxcstream-api-production.up.railway.app",
+    "https://zxczxc-pi.vercel.app/",
     "http://localhost:3000",
     "http://localhost:3001",
   ];
