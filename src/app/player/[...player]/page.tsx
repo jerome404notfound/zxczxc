@@ -20,7 +20,7 @@ export default function PlayerPage() {
   const [isAllowed, setIsAllowed] = useState(false);
 
   const apiKey = "47a1a7df542d3d483227f758a7317dff";
-  const allowedDomain = "http://localhost:3002";
+  const allowedDomain = "http://localhost:3001";
 
 useEffect(() => {
   try {
